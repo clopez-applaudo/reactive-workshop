@@ -1,0 +1,166 @@
+<div class="grid">
+  <section class="card">
+    <h2 class="h">Lab 5 — Mini store (Signals store + RxJS async)</h2>
+    <p class="muted" style="margin:0;">
+      Goal: use <strong>signals</strong> for store state (cart/filter) and <strong>RxJS</strong> for async loading/search.
+      Interop: <span class="pill">toObservable()</span> + <span class="pill">toSignal()</span>.
+    </p>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Controls</h3>
+
+    <div class="row">
+      <input
+        class="input"
+        placeholder="Search products (try 'signals', 'kit', or 'error')"
+        [value]="query()"
+        (input)="query.set(($any($event.target)).value)"
+      />
+      <button class="btn" (click)="clearQuery()">Clear</button>
+      <button class="btn primary" (click)="retry()">Retry</button>
+
+      <label class="pill">
+        category:
+        <select [value]="category()" (change)="setCategory(($any($event.target)).value)">
+          <option value="All">All</option>
+          <option value="Books">Books</option>
+          <option value="Games">Games</option>
+          <option value="Tools">Tools</option>
+        </select>
+      </label>
+
+      <label class="pill">
+        <input type="checkbox" [checked]="onlyAffordable()" (change)="onlyAffordable.set(($any($event.target)).checked)" />
+        only affordable (≤ $20)
+      </label>
+
+      <span class="pill">requests: <strong>{{ requestCount() }}</strong></span>
+    </div>
+
+    <p class="muted" style="margin: 10px 0 0;">
+      Search is debounced (300ms) and uses <code>switchMap</code> cancellation.
+    </p>
+  </section>
+
+  <section class="cols">
+
+    <section class="card">
+      <h3 class="h">Products</h3>
+      @if (productsState(); as state) {
+        @switch (state.status) {
+          @case ('idle') {
+            <p class="muted">Type to search, or leave empty to load all.</p>
+          }
+          @case ('loading') {
+            <p class="muted">Loading products…</p>
+          }
+          @case ('error') {
+            <p class="err">Error: {{ state.message }}</p>
+          }
+          @case ('success') {
+            <div class="row">
+              <span class="pill">loaded: <strong>{{ state.data.length }}</strong></span>
+              <span class="pill">filtered: <strong>{{ filteredProducts().length }}</strong></span>
+            </div>
+
+            <ul class="list">
+              @for (p of filteredProducts(); track p.id) {
+                <li>
+                  <div class="line">
+                    <div>
+                      <div style="font-weight:600;">{{ p.name }}</div>
+                      <div class="k">{{ p.category }} • ${{ p.price }}</div>
+                    </div>
+                    <div class="row" style="gap:8px;">
+                      <button class="btn" (click)="select(p)">Details</button>
+                      <button class="btn primary" (click)="addToCart(p)">Add</button>
+                    </div>
+                  </div>
+                </li>
+              }
+            </ul>
+
+            @if (filteredProducts().length === 0) {
+              <p class="muted">No products match filters.</p>
+            }
+          }
+        }
+      }
+
+      <details style="margin-top: 12px;">
+        <summary class="muted" style="cursor:pointer;">Why this pattern?</summary>
+        <div class="code" style="margin-top: 10px;">
+- RxJS handles async/cancellation: query$ → switchMap(api)
+- Signals handle store state: cart/category/toggles
+- Template reads signals synchronously: productsState(), filteredProducts(), totals
+        </div>
+      </details>
+    </section>
+
+    <section class="card">
+      <h3 class="h">Cart (Signals store)</h3>
+
+      <div class="row">
+        <span class="pill">items: <strong>{{ cartCount() }}</strong></span>
+        <span class="pill">total qty: <strong>{{ totalQty() }}</strong></span>
+        <span class="pill">total: <strong>${{ totalPrice() }}</strong></span>
+        <button class="btn danger" (click)="clearCart()">Clear cart</button>
+      </div>
+
+      @if (cart().length === 0) {
+        <p class="muted" style="margin-top: 10px;">Cart is empty.</p>
+      } @else {
+        <ul class="list">
+          <li *ngFor="let item of cart()">
+            <div class="line">
+              <div>
+                <div style="font-weight:600;">{{ item.product.name }}</div>
+                <div class="k">${{ item.product.price }} • qty {{ item.qty }}</div>
+              </div>
+              <div class="row" style="gap:8px;">
+                <button class="btn" (click)="decQty(item.product.id)">-</button>
+                <button class="btn" (click)="incQty(item.product.id)">+</button>
+                <button class="btn danger" (click)="removeFromCart(item.product.id)">Remove</button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      }
+
+      <div class="card" style="margin-top: 14px;">
+        <h4 class="h">Selected product</h4>
+        @if (selected()) {
+          <p style="margin:0;"><strong>{{ selected()!.name }}</strong></p>
+          <p class="muted" style="margin:6px 0 0;">
+            Category: {{ selected()!.category }} • Price: ${{ selected()!.price }}
+          </p>
+        } @else {
+          <p class="muted" style="margin:0;">Select a product to see details.</p>
+        }
+      </div>
+    </section>
+
+  </section>
+
+  <section class="card">
+    <h3 class="h">After-call TODOs</h3>
+    <ul>
+      <li><strong>TODO(1):</strong> Add a “sort” signal (Price asc/desc, Name asc) and apply it in <code>filteredProducts</code>.</li>
+      <li><strong>TODO(2):</strong> Persist cart to <code>localStorage</code> using an <code>effect()</code>.</li>
+      <li><strong>TODO(3):</strong> Add “stale while revalidate”: keep last success list while loading next query.</li>
+      <li><strong>TODO(4):</strong> Add a computed <code>cartSubtotalByCategory</code> map.</li>
+    </ul>
+
+    <details style="margin-top: 12px;">
+      <summary class="muted" style="cursor:pointer;">Show hints</summary>
+      <div class="code" style="margin-top: 10px;">
+- sort: add sort = signal<'Name'|'PriceAsc'|'PriceDesc'>('Name'); apply in computed
+- localStorage: effect(() => localStorage.setItem('cart', JSON.stringify(cart())))
+- stale list: lastProducts = signal([]) updated when success; show it during loading
+- subtotal map: computed(() => cart().reduce((m,it)=>..., new Map()))
+      </div>
+    </details>
+  </section>
+
+</div>
