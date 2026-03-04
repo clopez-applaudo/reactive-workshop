@@ -1,0 +1,137 @@
+<div class="grid">
+  <section class="card">
+    <h2 class="h">Lab 4 — Typeahead (cancellation + caching + UI state)</h2>
+    <p class="muted" style="margin:0;">
+      Goal: build a production-ish search box using RxJS for async flow and Signals for UI state.
+    </p>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Controls</h3>
+
+    <div class="row">
+      <input
+        class="input"
+        placeholder="Search users (try 'user 1' or 'error')"
+        [value]="query()"
+        (input)="setQuery(($any($event.target)).value)"
+      />
+      <button class="btn" (click)="clear()">Clear</button>
+      <button class="btn primary" (click)="retry()">Retry</button>
+    </div>
+
+    <div class="row" style="margin-top: 10px;">
+      <span class="pill">requests: <strong>{{ requestCount() }}</strong></span>
+
+      <label class="pill">
+        min length:
+        <select [value]="minLen()" (change)="setMinLen(($any($event.target)).value)">
+          <option [value]="2">2</option>
+          <option [value]="3">3</option>
+          <option [value]="4">4</option>
+        </select>
+      </label>
+
+      <label class="pill">
+        <input type="checkbox" [checked]="cacheEnabled()" (change)="cacheEnabled.set(($any($event.target)).checked)" />
+        cache enabled (shareReplay)
+      </label>
+
+      <span class="pill">debounce: <strong>300ms</strong></span>
+      <span class="pill">switchMap: <strong>on</strong></span>
+    </div>
+
+    <div style="margin-top: 12px;">
+      <div class="muted" style="margin-bottom: 6px;">Recent searches</div>
+      <div class="chips">
+        @if (recent().length === 0) {
+          <span class="muted">No recent searches yet.</span>
+        } @else {
+          @for (q of recent(); track q) {
+            <button class="chip" (click)="setQuery(q)">{{ q }}</button>
+          }
+          <button class="chip" (click)="clearRecent()">Clear recent</button>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Results</h3>
+
+    @if (state(); as state) {
+      @switch (state.status) {
+        @case ('idle') {
+          <p class="muted">
+            @if (state.reason === 'empty') {
+              Start typing to search.
+            } @else {
+              Type at least {{ minLen() }} characters.
+            }
+          </p>
+        }
+
+        @case ('loading') {
+          <p class="muted">Loading…</p>
+        }
+
+        @case ('error') {
+          <p class="err">
+            Error: {{ state.message }}
+            <span class="muted"> (try Retry or change the query)</span>
+          </p>
+        }
+
+        @case ('success') {
+          <div>
+            <p class="ok" style="margin: 0 0 8px;">Found {{ state.data.length }} users</p>
+            <ul class="list">
+              @for (u of state.data; track u) {
+                <li>
+                  {{ u.name }}
+                  <span class="muted">(#{{ u.id }})</span>
+                </li>
+              }
+            </ul>
+
+            <p class="muted" style="margin-top: 10px;">
+              Derived in Signals: <strong>{{ containsOne() ? 'Contains “1”' : 'No “1” in current results' }}</strong>
+            </p>
+          </div>
+        }
+      }
+    }
+  </section>
+
+  <section class="card">
+    <h3 class="h">How it works</h3>
+    <div class="code">
+Signals: query/minLen/cacheEnabled are local UI state.
+toObservable(query) → debounce → distinctUntilChanged
+combineLatest(query$, minLen$, retry$) → switchMap(API)
+UI state machine: idle/loading/error/success
+Optionally shareReplay(1) when cache is enabled.
+Expose to template as Signal: state = toSignal(state$,  requireSync: true )
+    </div>
+  </section>
+
+  <section class="card">
+    <h3 class="h">After-call TODOs</h3>
+    <ul>
+      <li><strong>TODO(1):</strong> Add “empty state” vs “too short” reasons (already here).</li>
+      <li><strong>TODO(2):</strong> Add a computed <code>showRetry()</code> signal that is true only for the error state.</li>
+      <li><strong>TODO(3):</strong> Add a “loading skeleton” list (fake rows) when loading.</li>
+      <li><strong>TODO(4):</strong> Add “stale results while loading” behavior (keep last success list visible under a spinner).</li>
+    </ul>
+
+    <details style="margin-top: 12px;">
+      <summary class="muted" style="cursor:pointer;">Show hints</summary>
+      <div class="code" style="margin-top: 10px;">
+- showRetry: computed(() => state().status === 'error')
+- skeleton: if loading, render 5 placeholder li elements
+- stale results: keep lastSuccess = signal updated on success; render it during loading
+- minLen select: convert value to number (already done in setMinLen)
+      </div>
+    </details>
+  </section>
+</div>
