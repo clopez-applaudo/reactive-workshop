@@ -1,0 +1,125 @@
+<div class="grid">
+
+  <section class="card">
+    <h2 class="h">Lab 3 — RxJS ↔ Signals Interop</h2>
+    <p class="muted" style="margin:0;">
+      Goal: bridge the two reactive worlds cleanly:
+      <span class="pill">toSignal()</span> and <span class="pill">toObservable()</span>.
+    </p>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Mental model</h3>
+    <div class="code">
+Observable → Signal: toSignal(obs$) gives you a synchronous read in templates (signal()).
+Signal → Observable: toObservable(sig) lets you use RxJS operators like debounce/switchMap.
+Best practice: keep complex async workflows in RxJS, expose results to templates as Signals.
+    </div>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Demo A — Signal drives RxJS pipeline (Signal → Observable)</h3>
+
+    <div class="row">
+      <input
+        class="input"
+        placeholder="Search users (try 'user 1' or 'error')"
+        [value]="query()"
+        (input)="setQuery(($any($event.target)).value)"
+      />
+      <button class="btn" (click)="clear()">Clear</button>
+      <button class="btn primary" (click)="retry()">Retry</button>
+    </div>
+
+    <div class="row" style="margin-top: 10px;">
+      <span class="pill">query (signal): <strong>{{ query() || '∅' }}</strong></span>
+      <span class="pill">requests: <strong>{{ requestCount() }}</strong></span>
+      <span class="pill">debounce: <strong>300ms</strong></span>
+      <span class="pill">min chars: <strong>{{ minLen() }}</strong></span>
+    </div>
+
+    <div style="margin-top: 12px;">
+      @if (state(); as state) {
+        @switch (state.status) {
+          @case ('idle') {
+            <p class="muted">Type at least {{ minLen() }} characters.</p>
+          }
+          @case ('loading') {
+            <p class="muted">Loading… (switchMap cancels stale requests)</p>
+          }
+          @case ('error') {
+            <p class="err">Error: {{ state.message }}</p>
+          }
+          @case ('success') {
+            <p class="ok" style="margin: 0 0 8px;">Found {{ state.data.length }} users</p>
+            <ul>
+              @for (u of state.data; track u.id) {
+                <li>{{ u.name }}</li>
+              }
+            </ul>
+          }
+        }
+      }
+    </div>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Demo B — Observable drives a Signal (Observable → Signal)</h3>
+    <p class="muted" style="margin: 0 0 10px;">
+      Here we expose the latest successful list as a <strong>signal</strong> (template-friendly),
+      but the async/cancellation work still happens in RxJS.
+    </p>
+
+    <div class="row">
+      <span class="pill">usersSignal(): <strong>{{ users().length }}</strong></span>
+      <span class="pill">empty: <strong>{{ users().length === 0 ? 'yes' : 'no' }}</strong></span>
+      <span class="pill">first: <strong>{{ users()[0]?.name ?? '—' }}</strong></span>
+    </div>
+
+    <details style="margin-top: 12px;">
+      <summary class="muted" style="cursor:pointer;">Show the idea in one sentence</summary>
+      <div class="code" style="margin-top: 10px;">
+        users = toSignal(users$,  initialValue: [] )
+      </div>
+    </details>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Signals-only derivations on top of async results</h3>
+    <p class="muted" style="margin:0 0 8px;">
+      Once results are in a signal, derivations are just computed().
+    </p>
+
+    <div class="row">
+      <span class="pill">filtered (computed): <strong>{{ filteredUsers().length }}</strong></span>
+      <span class="pill">contains “3”: <strong>{{ hasThree() ? 'yes' : 'no' }}</strong></span>
+    </div>
+
+    <ul>
+      @for (u of filteredUsers(); track u.id) {
+        <li>{{ u.name }}</li>
+      }
+    </ul>
+  </section>
+
+  <section class="card">
+    <h3 class="h">After-call TODOs</h3>
+    <ul>
+      <li><strong>TODO(1):</strong> Add a UI control to change <code>minLen</code> (2/3/4) and make the pipeline respect it.</li>
+      <li><strong>TODO(2):</strong> Add <code>loading</code> as a separate signal derived from <code>state()</code>.</li>
+      <li><strong>TODO(3):</strong> Split the pipeline into <code>users$</code> (data only) + <code>state$</code> (UI state).</li>
+      <li><strong>TODO(4):</strong> Add “cache enabled” toggle that conditionally applies <code>shareReplay(1)</code>.</li>
+    </ul>
+
+    <details style="margin-top: 12px;">
+      <summary class="muted" style="cursor:pointer;">Show hints</summary>
+      <div class="code" style="margin-top: 10px;">
+- minLen control: make minLen a signal → toObservable(minLen) and combineLatest with query$
+- loading signal: computed(() => state().status === 'loading')
+- split: users$ = query$.pipe(switchMap(api...), shareReplay(1)); state$ = users$.pipe(map(...), startWith(...))
+- cache toggle: build users$ inside a computed-ish factory or rebuild when toggle changes (careful with re-subscription)
+      </div>
+    </details>
+  </section>
+
+</div>
