@@ -1,0 +1,149 @@
+
+<div class="grid">
+
+  <section class="card">
+    <h2 class="h">Lab 1 — Signals basics</h2>
+    <p class="muted" style="margin:0;">
+      Goal: learn <span class="pill">signal()</span>,
+      <span class="pill">computed()</span>, and
+      <span class="pill">effect()</span> using a tiny stateful UI.
+    </p>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Demo A — Counter state</h3>
+
+    <div class="row">
+      <button class="btn" (click)="dec()">-</button>
+      <span class="pill">count: <strong>{{ count() }}</strong></span>
+      <button class="btn" (click)="inc()">+</button>
+
+      <span class="pill">step: <strong>{{ step() }}</strong></span>
+      <button class="btn" (click)="setStep(1)">1</button>
+      <button class="btn" (click)="setStep(5)">5</button>
+      <button class="btn" (click)="setStep(10)">10</button>
+
+      <button class="btn danger" (click)="reset()">Reset</button>
+    </div>
+
+    <p class="muted" style="margin: 10px 0 0;">
+      This is <strong>writable state</strong> via signals. Buttons call
+      <code>set()</code>/<code>update()</code>.
+    </p>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Demo B — Derived state (computed)</h3>
+
+    <div class="kv">
+      <div class="muted">double</div>
+      <div><strong>{{ double() }}</strong></div>
+
+      <div class="muted">parity</div>
+      <div><strong>{{ parity() }}</strong></div>
+
+      <div class="muted">isNegative</div>
+      <div><strong>{{ isNegative() }}</strong></div>
+
+      <div class="muted">status label</div>
+      <div>
+        @if (isNegative()) {
+          <span class="pill">⚠️ Negative</span>
+        } @else if (count() === 0) {
+          <span class="pill">🟦 Neutral</span>
+        } @else {
+          <span class="pill">✅ Positive</span>
+        }
+      </div>
+    </div>
+
+    <p class="muted" style="margin: 10px 0 0;">
+      <strong>computed()</strong> must be pure: return a value, no side effects.
+    </p>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Demo C — Side effects (effect)</h3>
+
+    <div class="row">
+      <label class="pill">
+        <input type="checkbox" [checked]="logToConsole()" (change)="toggleLogging(($any($event.target)).checked)" />
+        Log changes to console
+      </label>
+
+      <button class="btn primary" (click)="addToast('Manual toast added')">Add toast</button>
+      <button class="btn" (click)="clearToasts()">Clear toasts</button>
+    </div>
+
+    <p class="muted" style="margin: 10px 0 0;">
+      We use <strong>effect()</strong> to react to state changes (logging + toasts).
+    </p>
+
+    <div class="grid" style="margin-top: 12px;">
+      @if (toasts().length === 0) {
+        <div class="muted">No toasts yet.</div>
+      } @else {
+        @for (t of toasts(); track t.id) {
+          <div class="toast">
+            <div>
+              <div style="font-weight:600;">{{ t.message }}</div>
+              <div class="muted" style="font-size:12px;">{{ t.ts | date:'mediumTime' }}</div>
+            </div>
+            <button class="btn" (click)="removeToast(t.id)">Dismiss</button>
+          </div>
+        }
+      }
+    </div>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Mini exercise — Name + validation (signals)</h3>
+
+    <div class="row">
+      <input
+        class="input"
+        placeholder="Type your name (try 10+ chars)..."
+        [value]="name()"
+        (input)="name.set(($any($event.target)).value)"
+      />
+      <span class="pill">len: <strong>{{ nameLen() }}</strong></span>
+      <span class="pill">valid: <strong>{{ isLongName() ? 'yes' : 'no' }}</strong></span>
+    </div>
+
+    @if (isLongName()) {
+      <p style="margin: 10px 0 0;">✅ Long name detected (computed).</p>
+    } @else {
+      <p class="muted" style="margin: 10px 0 0;">Type at least 10 characters.</p>
+    }
+  </section>
+
+  <section class="card">
+    <h3 class="h">After-call TODOs</h3>
+    <ul>
+      <li><strong>TODO(1):</strong> Add a <code>min</code> and <code>max</code> signal and clamp the counter in <code>inc/dec</code>.</li>
+      <li><strong>TODO(2):</strong> Add computed <code>progress()</code> = percentage between min/max.</li>
+      <li><strong>TODO(3):</strong> Add an effect that auto-dismisses toasts after 3 seconds (hint: <code>setTimeout</code> inside effect).</li>
+      <li><strong>TODO(4):</strong> Add a “history” signal (array) that records the last 10 count values.</li>
+    </ul>
+
+    <details style="margin-top: 12px;">
+      <summary class="muted" style="cursor:pointer;">Show hints (keep short)</summary>
+      <div style="margin-top: 10px;" class="code">
+- Clamp: this.count.update(v => Math.min(this.max(), Math.max(this.min(), v + this.step())))
+- progress: computed(() => (this.count()-min)/(max-min) * 100)
+- toast auto-dismiss: setTimeout(() => this.removeToast(id), 3000)
+- history: history.update(h => [count, ...h].slice(0,10))
+      </div>
+    </details>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Key takeaways</h3>
+    <div class="code">
+signal()   = writable state
+computed() = derived state (pure)
+effect()   = side effects (logging, DOM, timers, IO)
+    </div>
+  </section>
+
+</div>
