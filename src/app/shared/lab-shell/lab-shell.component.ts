@@ -30,7 +30,6 @@ export type LabNavItem = {
         <div class="title">Reactive Workshop</div>
         <div class="hint">
           Focus: RxJS + Signals + interop. <br />
-          Use the labs in order during your 1h call.
         </div>
 
         <div class="section">
