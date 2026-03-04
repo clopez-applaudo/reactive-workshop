@@ -1,0 +1,126 @@
+<div class="grid">
+
+  <section class="card">
+    <h2 class="h">Lab 2 — RxJS basics</h2>
+    <p class="muted" style="margin:0;">
+      Goal: learn <span class="pill">Observable</span>,
+      <span class="pill">Subject</span>,
+      <span class="pill">operators</span>,
+      <span class="pill">switchMap cancellation</span>,
+      <span class="pill">shareReplay caching</span>.
+    </p>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Mental model (talk track)</h3>
+    <div class="code">
+UI events → Subject.next(value)
+Subject → pipe(operators...)
+Result Observable → async pipe in template (no manual unsubscribe)
+switchMap → cancels previous async work when a new value arrives
+shareReplay(1) → cache latest successful result for new subscribers
+    </div>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Demo A — BAD pattern (manual subscription)</h3>
+    <p class="muted" style="margin: 0 0 8px;">
+      This simulates the typical AngularJS “do it in controller” mindset:
+      subscribe manually and mutate local fields. It works… until it doesnt.
+    </p>
+
+    <div class="row">
+      <input
+        class="input"
+        placeholder="Type to search (try 'user 1' or 'error')"
+        [value]="badQuery"
+        (input)="badOnInput(($any($event.target)).value)"
+      />
+      <button class="btn" (click)="badClear()">Clear</button>
+    </div>
+
+    <div class="row" style="margin-top: 10px;">
+      <span class="pill">active subscriptions: <strong>{{ badActiveSubs }}</strong></span>
+      <span class="pill">bad results: <strong>{{ badResults.length }}</strong></span>
+      @if (badError) { 
+        <span class="pill err">error: <strong>{{ badError }}</strong></span> 
+      }
+    </div>
+
+    <p class="muted" style="margin-top: 10px;">
+      Problem: easy to leak subscriptions, duplicate calls, and create inconsistent UI state.
+    </p>
+  </section>
+
+  <section class="card">
+    <h3 class="h">Demo B — GOOD pattern (pipeline + async pipe)</h3>
+
+    <div class="row">
+      <input
+        class="input"
+        placeholder="Type to search (try 'user 2' or 'error')"
+        [value]="goodQuerySnapshot"
+        (input)="goodSetQuery(($any($event.target)).value)"
+      />
+      <button class="btn" (click)="goodClear()">Clear</button>
+      <button class="btn primary" (click)="goodRetry()">Retry</button>
+    </div>
+
+    <div class="row" style="margin-top: 10px;">
+      <span class="pill">debounce: <strong>300ms</strong></span>
+      <span class="pill">min chars: <strong>2</strong></span>
+      <span class="pill">cache: <strong>shareReplay(1)</strong></span>
+      <span class="pill">cancellation: <strong>switchMap</strong></span>
+    </div>
+
+    <div style="margin-top: 12px;">
+      <!-- Render view state via async pipe -->
+       @if (goodState$ | async; as state) {
+        @switch (state.status) {
+          @case ('idle') {
+            <p class="muted">Type at least 2 characters to search.</p>  
+          }
+          @case ('loading') {
+            <p class="muted">Loading…</p>  
+          }
+          @case ('error') {
+            <p class="err">
+              Error: {{ state.message }}
+              <span class="muted"> (Press Retry or type again)</span>
+            </p>  
+          }
+          @case ('success') {
+            <div>
+              <p class="ok" style="margin: 0 0 8px;">Found {{ state.data.length }} users</p>
+              <ul>
+                @for (u of state.data; track u.id) {
+                  <li>{{ u.name }}</li>
+                }
+              </ul>
+            </div>
+        }
+       }
+      }
+    </div>
+  </section>
+
+  <section class="card">
+    <h3 class="h">After-call TODOs</h3>
+    <ul>
+      <li><strong>TODO(1):</strong> Add a “min length” BehaviorSubject so the user can change it (2/3/4).</li>
+      <li><strong>TODO(2):</strong> Add <code>map</code> to highlight matches (wrap match in brackets) for display only.</li>
+      <li><strong>TODO(3):</strong> Add a checkbox “cache enabled” to toggle <code>shareReplay(1)</code> on/off.</li>
+      <li><strong>TODO(4):</strong> Add a small “request counter” using <code>tap</code> before the API call.</li>
+    </ul>
+
+    <details style="margin-top: 12px;">
+      <summary class="muted" style="cursor:pointer;">Show hints</summary>
+      <div style="margin-top: 10px;" class="code">
+- min length: const min$ = new BehaviorSubject(2); combineLatest([query$, min$])...
+- highlighting: map(users => users.map(u => (...u, name: u.name.replace(...) )))
+- cache toggle: cacheEnabled$ then inside switchMap decide to shareReplay or not (or rebuild pipeline)
+- request counter: tap(() => reqCount.next(reqCount.value + 1))
+      </div>
+    </details>
+  </section>
+</div>
